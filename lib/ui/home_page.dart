@@ -88,13 +88,13 @@ class SecurityTab extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             const Text('Saved PDF Passwords'),
-            ...state.savedPdfPasswords.entries.map(
-              (entry) => ListTile(
-                title: Text(entry.key),
-                subtitle: Text(entry.value),
+            ...state.savedPdfPasswordBanks.map(
+              (bank) => ListTile(
+                title: Text(bank),
+                subtitle: const Text('••••••••'),
                 trailing: IconButton(
                   icon: const Icon(Icons.delete),
-                  onPressed: () => context.read<SecurityCubit>().deletePdfPassword(entry.key),
+                  onPressed: () => context.read<SecurityCubit>().deletePdfPassword(bank),
                 ),
               ),
             ),
@@ -111,32 +111,43 @@ class SecurityTab extends StatelessWidget {
   Future<void> _showAddPasswordDialog(BuildContext context) async {
     final bankController = TextEditingController();
     final passwordController = TextEditingController();
-    await showDialog<void>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Save bank PDF password'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: bankController, decoration: const InputDecoration(labelText: 'Bank')),
-            TextField(controller: passwordController, decoration: const InputDecoration(labelText: 'Password')),
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Save bank PDF password'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: bankController, decoration: const InputDecoration(labelText: 'Bank')),
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Password'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                context.read<SecurityCubit>().savePdfPassword(
+                      bankController.text.trim(),
+                      passwordController.text,
+                    );
+                Navigator.pop(context);
+              },
+              child: const Text('Save'),
+            ),
           ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () {
-              context.read<SecurityCubit>().savePdfPassword(
-                    bankController.text.trim(),
-                    passwordController.text,
-                  );
-              Navigator.pop(context);
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
+      );
+    } finally {
+      passwordController.clear();
+      bankController.clear();
+      bankController.dispose();
+      passwordController.dispose();
+    }
   }
 }
 

@@ -65,6 +65,8 @@ class CardProfile extends Equatable {
 }
 
 class StatementRecord extends Equatable {
+  static const Object _unset = Object();
+
   const StatementRecord({
     required this.id,
     required this.cardId,
@@ -99,8 +101,8 @@ class StatementRecord extends Equatable {
     int? transactionCount,
     bool? isPaid,
     double? paidAmount,
-    DateTime? paymentDate,
-    String? paymentReference,
+    Object? paymentDate = _unset,
+    Object? paymentReference = _unset,
   }) {
     return StatementRecord(
       id: id,
@@ -112,8 +114,9 @@ class StatementRecord extends Equatable {
       transactionCount: transactionCount ?? this.transactionCount,
       isPaid: isPaid ?? this.isPaid,
       paidAmount: paidAmount ?? this.paidAmount,
-      paymentDate: paymentDate ?? this.paymentDate,
-      paymentReference: paymentReference ?? this.paymentReference,
+      paymentDate: paymentDate == _unset ? this.paymentDate : paymentDate as DateTime?,
+      paymentReference:
+          paymentReference == _unset ? this.paymentReference : paymentReference as String?,
     );
   }
 
@@ -134,6 +137,8 @@ class StatementRecord extends Equatable {
 }
 
 class TransactionRecord extends Equatable {
+  static const Object _unset = Object();
+
   const TransactionRecord({
     required this.id,
     required this.cardId,
@@ -161,6 +166,7 @@ class TransactionRecord extends Equatable {
     String? category,
     DateTime? date,
     double? amount,
+    Object? statementId = _unset,
     bool? isInstallment,
     bool? excludeFromAnalytics,
   }) {
@@ -171,7 +177,7 @@ class TransactionRecord extends Equatable {
       category: category ?? this.category,
       date: date ?? this.date,
       amount: amount ?? this.amount,
-      statementId: statementId,
+      statementId: statementId == _unset ? this.statementId : statementId as String?,
       isInstallment: isInstallment ?? this.isInstallment,
       excludeFromAnalytics: excludeFromAnalytics ?? this.excludeFromAnalytics,
     );

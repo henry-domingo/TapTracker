@@ -11,13 +11,19 @@ import 'models/entities.dart';
 import 'repositories/app_repositories.dart';
 import 'ui/home_page.dart';
 
-class TapTrackerApp extends StatelessWidget {
+class TapTrackerApp extends StatefulWidget {
   const TapTrackerApp({super.key});
 
   @override
+  State<TapTrackerApp> createState() => _TapTrackerAppState();
+}
+
+class _TapTrackerAppState extends State<TapTrackerApp> {
+  final LocalDataRepository localDataRepository = LocalDataRepository();
+  final SecureSettingsRepository secureSettingsRepository = SecureSettingsRepository();
+
+  @override
   Widget build(BuildContext context) {
-    final localDataRepository = LocalDataRepository();
-    final secureSettingsRepository = SecureSettingsRepository();
     return MultiBlocProvider(
       providers: [
         BlocProvider(create: (_) => SecurityCubit(secureSettingsRepository)..load()),
@@ -39,8 +45,18 @@ class TapTrackerApp extends StatelessWidget {
 }
 
 Color hexToColor(String hex) {
-  final value = int.parse(hex.replaceAll('#', ''), radix: 16);
-  return Color(0xFF000000 + value);
+  final raw = hex.replaceAll('#', '');
+  if (raw.length != 6 && raw.length != 8) {
+    return const Color(0xFF000000);
+  }
+  final value = int.tryParse(raw, radix: 16);
+  if (value == null) {
+    return const Color(0xFF000000);
+  }
+  if (raw.length == 8) {
+    return Color(value);
+  }
+  return Color(0xFF000000 | value);
 }
 
 String utilizationBand(double utilization) {

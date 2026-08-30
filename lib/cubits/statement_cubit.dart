@@ -5,6 +5,8 @@ import '../models/entities.dart';
 import '../repositories/app_repositories.dart';
 
 class StatementState extends Equatable {
+  static const Object _unset = Object();
+
   const StatementState({
     this.statements = const [],
     this.transactions = const [],
@@ -36,18 +38,20 @@ class StatementState extends Equatable {
   StatementState copyWith({
     List<StatementRecord>? statements,
     List<TransactionRecord>? transactions,
-    ParseSummary? parseSummary,
+    Object? parseSummary = _unset,
     String? query,
-    String? selectedCardId,
-    String? selectedCategory,
+    Object? selectedCardId = _unset,
+    Object? selectedCategory = _unset,
   }) {
     return StatementState(
       statements: statements ?? this.statements,
       transactions: transactions ?? this.transactions,
-      parseSummary: parseSummary ?? this.parseSummary,
+      parseSummary: parseSummary == _unset ? this.parseSummary : parseSummary as ParseSummary?,
       query: query ?? this.query,
-      selectedCardId: selectedCardId ?? this.selectedCardId,
-      selectedCategory: selectedCategory ?? this.selectedCategory,
+      selectedCardId:
+          selectedCardId == _unset ? this.selectedCardId : selectedCardId as String?,
+      selectedCategory:
+          selectedCategory == _unset ? this.selectedCategory : selectedCategory as String?,
     );
   }
 
@@ -151,28 +155,10 @@ class StatementCubit extends Cubit<StatementState> {
   }
 
   void setCardFilter(String? cardId) {
-    emit(
-      StatementState(
-        statements: state.statements,
-        transactions: state.transactions,
-        parseSummary: state.parseSummary,
-        query: state.query,
-        selectedCardId: cardId,
-        selectedCategory: state.selectedCategory,
-      ),
-    );
+    emit(state.copyWith(selectedCardId: cardId));
   }
 
   void setCategoryFilter(String? category) {
-    emit(
-      StatementState(
-        statements: state.statements,
-        transactions: state.transactions,
-        parseSummary: state.parseSummary,
-        query: state.query,
-        selectedCardId: state.selectedCardId,
-        selectedCategory: category,
-      ),
-    );
+    emit(state.copyWith(selectedCategory: category));
   }
 }

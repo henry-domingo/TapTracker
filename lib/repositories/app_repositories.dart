@@ -44,6 +44,7 @@ class SecureSettingsRepository {
 }
 
 class LocalDataRepository {
+  static final Random _random = Random.secure();
   final List<CardProfile> _cards = [];
   final List<StatementRecord> _statements = [];
   final List<TransactionRecord> _transactions = [];
@@ -101,5 +102,6 @@ class LocalDataRepository {
     }
   }
 
-  String newId() => '${DateTime.now().microsecondsSinceEpoch}${Random().nextInt(9999)}';
+  String newId() =>
+      '${DateTime.now().microsecondsSinceEpoch}${_random.nextInt(1 << 32).toRadixString(16)}';
 }

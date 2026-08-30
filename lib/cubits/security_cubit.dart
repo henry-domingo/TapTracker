@@ -9,25 +9,25 @@ class SecurityState extends Equatable {
     this.pinEnabled = false,
     this.biometricEnabled = false,
     this.autoLockTimeout = AutoLockTimeout.immediate,
-    this.savedPdfPasswords = const {},
+    this.savedPdfPasswordBanks = const [],
   });
 
   final bool pinEnabled;
   final bool biometricEnabled;
   final AutoLockTimeout autoLockTimeout;
-  final Map<String, String> savedPdfPasswords;
+  final List<String> savedPdfPasswordBanks;
 
   SecurityState copyWith({
     bool? pinEnabled,
     bool? biometricEnabled,
     AutoLockTimeout? autoLockTimeout,
-    Map<String, String>? savedPdfPasswords,
+    List<String>? savedPdfPasswordBanks,
   }) {
     return SecurityState(
       pinEnabled: pinEnabled ?? this.pinEnabled,
       biometricEnabled: biometricEnabled ?? this.biometricEnabled,
       autoLockTimeout: autoLockTimeout ?? this.autoLockTimeout,
-      savedPdfPasswords: savedPdfPasswords ?? this.savedPdfPasswords,
+      savedPdfPasswordBanks: savedPdfPasswordBanks ?? this.savedPdfPasswordBanks,
     );
   }
 
@@ -36,7 +36,7 @@ class SecurityState extends Equatable {
         pinEnabled,
         biometricEnabled,
         autoLockTimeout,
-        savedPdfPasswords,
+        savedPdfPasswordBanks,
       ];
 }
 
@@ -48,7 +48,12 @@ class SecurityCubit extends Cubit<SecurityState> {
   Future<void> load() async {
     final timeout = await _repository.getAutoLockTimeout();
     final passwords = await _repository.getSavedBankPdfPasswords();
-    emit(state.copyWith(autoLockTimeout: timeout, savedPdfPasswords: passwords));
+    emit(
+      state.copyWith(
+        autoLockTimeout: timeout,
+        savedPdfPasswordBanks: passwords.keys.toList()..sort(),
+      ),
+    );
   }
 
   void setPinEnabled(bool enabled) {
@@ -66,15 +71,17 @@ class SecurityCubit extends Cubit<SecurityState> {
 
   Future<void> savePdfPassword(String bank, String password) async {
     await _repository.saveBankPdfPassword(bank, password);
-    final updated = Map<String, String>.from(state.savedPdfPasswords)
-      ..[bank] = password;
-    emit(state.copyWith(savedPdfPasswords: updated));
+    final updated = [...state.savedPdfPasswordBanks];
+    if (!updated.contains(bank)) {
+      updated.add(bank);
+      updated.sort();
+      emit(state.copyWith(savedPdfPasswordBanks: updated));
+    }
   }
 
   Future<void> deletePdfPassword(String bank) async {
     await _repository.deleteBankPdfPassword(bank);
-    final updated = Map<String, String>.from(state.savedPdfPasswords)
-      ..remove(bank);
-    emit(state.copyWith(savedPdfPasswords: updated));
+    final updated = [...state.savedPdfPasswordBanks]..remove(bank);
+    emit(state.copyWith(savedPdfPasswordBanks: updated));
   }
 }
