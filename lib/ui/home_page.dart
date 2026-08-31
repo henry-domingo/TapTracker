@@ -660,117 +660,127 @@ class CardsTab extends StatelessWidget {
 
     var selectedNetwork = existing?.network ?? CardNetwork.visa;
 
-    try {
-      await showDialog<void>(
-        context: context,
-        builder: (dialogContext) {
-          return StatefulBuilder(
-            builder: (context, setDialogState) {
-              return AlertDialog(
-                title: Text(
-                    existing == null ? 'Add credit card' : 'Edit credit card'),
-                content: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Autocomplete<String>(
-                        optionsBuilder: (textEditingValue) {
-                          final query =
-                              textEditingValue.text.trim().toLowerCase();
-                          if (query.isEmpty) {
-                            return philippineBanks;
-                          }
-                          return philippineBanks.where(
-                            (bank) => bank.toLowerCase().contains(query),
-                          );
-                        },
-                        onSelected: (value) {
-                          bankController.text = value;
-                        },
-                        fieldViewBuilder: (context, textController, focusNode,
-                            onFieldSubmitted) {
-                          if (textController.text != bankController.text) {
-                            textController.value = bankController.value;
-                          }
-                          return TextField(
-                            controller: textController,
-                            focusNode: focusNode,
-                            onChanged: (value) => bankController.text = value,
-                            decoration:
-                                const InputDecoration(labelText: 'Bank name'),
-                          );
-                        },
-                      ),
-                      TextField(
-                        controller: nicknameController,
-                        decoration:
-                            const InputDecoration(labelText: 'Card nickname'),
-                      ),
-                      DropdownButtonFormField<CardNetwork>(
-                        value: selectedNetwork,
-                        items: CardNetwork.values
-                            .map((network) => DropdownMenuItem(
-                                  value: network,
-                                  child: Text(network.name.toUpperCase()),
-                                ))
-                            .toList(),
-                        onChanged: (value) {
-                          if (value != null) {
-                            setDialogState(() {
-                              selectedNetwork = value;
-                            });
-                          }
-                        },
-                        decoration: const InputDecoration(labelText: 'Network'),
-                      ),
-                      TextField(
-                        controller: creditLimitController,
-                        keyboardType: TextInputType.number,
-                        decoration:
-                            const InputDecoration(labelText: 'Credit limit'),
-                      ),
-                      TextField(
-                        controller: statementDayController,
-                        keyboardType: TextInputType.number,
-                        decoration:
-                            const InputDecoration(labelText: 'Statement day'),
-                      ),
-                      TextField(
-                        controller: dueDayController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'Due day'),
-                      ),
-                      TextField(
-                        controller: colorController,
-                        decoration: const InputDecoration(
-                            labelText: 'Color hex (#RRGGBB)'),
-                      ),
-                    ],
-                  ),
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(
+                  existing == null ? 'Add credit card' : 'Edit credit card'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Autocomplete<String>(
+                      optionsBuilder: (textEditingValue) {
+                        final query =
+                            textEditingValue.text.trim().toLowerCase();
+                        if (query.isEmpty) {
+                          return philippineBanks;
+                        }
+                        return philippineBanks.where(
+                          (bank) => bank.toLowerCase().contains(query),
+                        );
+                      },
+                      onSelected: (value) {
+                        bankController.text = value;
+                      },
+                      fieldViewBuilder: (context, textController, focusNode,
+                          onFieldSubmitted) {
+                        if (textController.text != bankController.text) {
+                          textController.value = bankController.value;
+                        }
+                        return TextField(
+                          controller: textController,
+                          focusNode: focusNode,
+                          onChanged: (value) => bankController.text = value,
+                          decoration:
+                              const InputDecoration(labelText: 'Bank name'),
+                        );
+                      },
+                    ),
+                    TextField(
+                      controller: nicknameController,
+                      decoration:
+                          const InputDecoration(labelText: 'Card nickname'),
+                    ),
+                    DropdownButtonFormField<CardNetwork>(
+                      value: selectedNetwork,
+                      items: CardNetwork.values
+                          .map((network) => DropdownMenuItem(
+                                value: network,
+                                child: Text(network.name.toUpperCase()),
+                              ))
+                          .toList(),
+                      onChanged: (value) {
+                        if (value != null) {
+                          setDialogState(() {
+                            selectedNetwork = value;
+                          });
+                        }
+                      },
+                      decoration: const InputDecoration(labelText: 'Network'),
+                    ),
+                    TextField(
+                      controller: creditLimitController,
+                      keyboardType: TextInputType.number,
+                      decoration:
+                          const InputDecoration(labelText: 'Credit limit'),
+                    ),
+                    TextField(
+                      controller: statementDayController,
+                      keyboardType: TextInputType.number,
+                      decoration:
+                          const InputDecoration(labelText: 'Statement day'),
+                    ),
+                    TextField(
+                      controller: dueDayController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Due day'),
+                    ),
+                    TextField(
+                      controller: colorController,
+                      decoration: const InputDecoration(
+                          labelText: 'Color hex (#RRGGBB)'),
+                    ),
+                  ],
                 ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(dialogContext),
-                    child: const Text('Cancel'),
-                  ),
-                  FilledButton(
-                    onPressed: () {
-                      final bank = bankController.text.trim();
-                      final nickname = nicknameController.text.trim();
-                      if (bank.isEmpty || nickname.isEmpty) {
-                        return;
-                      }
-                      final creditLimit =
-                          double.tryParse(creditLimitController.text) ?? 0;
-                      final statementDay =
-                          int.tryParse(statementDayController.text) ?? 1;
-                      final dueDay = int.tryParse(dueDayController.text) ?? 1;
-                      final colorHex = colorController.text.trim().isEmpty
-                          ? '#1976D2'
-                          : colorController.text.trim();
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final bank = bankController.text.trim();
+                    final nickname = nicknameController.text.trim();
+                    if (bank.isEmpty || nickname.isEmpty) {
+                      return;
+                    }
+                    final creditLimit =
+                        double.tryParse(creditLimitController.text) ?? 0;
+                    final statementDay =
+                        int.tryParse(statementDayController.text) ?? 1;
+                    final dueDay = int.tryParse(dueDayController.text) ?? 1;
+                    final colorHex = colorController.text.trim().isEmpty
+                        ? '#1976D2'
+                        : colorController.text.trim();
 
-                      if (existing == null) {
-                        context.read<CardCubit>().addCard(
+                    if (existing == null) {
+                      context.read<CardCubit>().addCard(
+                            bankName: bank,
+                            nickname: nickname,
+                            network: selectedNetwork,
+                            creditLimit: creditLimit,
+                            statementDay: statementDay,
+                            dueDay: dueDay,
+                            colorHex: colorHex,
+                          );
+                    } else {
+                      context.read<CardCubit>().updateCard(
+                            existing.copyWith(
                               bankName: bank,
                               nickname: nickname,
                               network: selectedNetwork,
@@ -778,38 +788,19 @@ class CardsTab extends StatelessWidget {
                               statementDay: statementDay,
                               dueDay: dueDay,
                               colorHex: colorHex,
-                            );
-                      } else {
-                        context.read<CardCubit>().updateCard(
-                              existing.copyWith(
-                                bankName: bank,
-                                nickname: nickname,
-                                network: selectedNetwork,
-                                creditLimit: creditLimit,
-                                statementDay: statementDay,
-                                dueDay: dueDay,
-                                colorHex: colorHex,
-                              ),
-                            );
-                      }
-                      Navigator.pop(dialogContext);
-                    },
-                    child: Text(existing == null ? 'Add' : 'Save changes'),
-                  ),
-                ],
-              );
-            },
-          );
-        },
-      );
-    } finally {
-      bankController.dispose();
-      nicknameController.dispose();
-      creditLimitController.dispose();
-      statementDayController.dispose();
-      dueDayController.dispose();
-      colorController.dispose();
-    }
+                            ),
+                          );
+                    }
+                    Navigator.pop(dialogContext);
+                  },
+                  child: Text(existing == null ? 'Add' : 'Save changes'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 }
 
