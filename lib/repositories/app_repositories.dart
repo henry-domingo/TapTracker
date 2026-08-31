@@ -28,6 +28,10 @@ class SecureSettingsRepository {
     };
   }
 
+  Future<String?> getBankPdfPassword(String bank) async {
+    return _secureStorage.read(key: 'pdf_password_$bank');
+  }
+
   Future<void> saveAutoLockTimeout(AutoLockTimeout timeout) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('auto_lock_timeout', timeout.name);
