@@ -45,6 +45,26 @@ class SecureSettingsRepository {
       orElse: () => AutoLockTimeout.immediate,
     );
   }
+
+  Future<void> savePinEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('pin_enabled', enabled);
+  }
+
+  Future<bool> getPinEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('pin_enabled') ?? false;
+  }
+
+  Future<void> saveBiometricEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('biometric_enabled', enabled);
+  }
+
+  Future<bool> getBiometricEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('biometric_enabled') ?? false;
+  }
 }
 
 class LocalDataRepository {

@@ -65,14 +65,20 @@ class SecurityCubit extends Cubit<SecurityState> {
   SecurityCubit(
     this._repository, {
     LocalAuthentication? localAuthentication,
+    Future<bool> Function(LocalAuthentication localAuthentication)? authenticate,
   })  : _localAuthentication = localAuthentication ?? LocalAuthentication(),
+        _authenticate = authenticate,
         super(const SecurityState());
 
   final SecureSettingsRepository _repository;
   final LocalAuthentication _localAuthentication;
+  final Future<bool> Function(LocalAuthentication localAuthentication)?
+      _authenticate;
 
   Future<void> load() async {
     final timeout = await _repository.getAutoLockTimeout();
+    final pinEnabled = await _repository.getPinEnabled();
+    final biometricEnabled = await _repository.getBiometricEnabled();
     final passwords = await _repository.getSavedBankPdfPasswords();
     var biometricsAvailable = false;
     try {
@@ -85,18 +91,32 @@ class SecurityCubit extends Cubit<SecurityState> {
     emit(
       state.copyWith(
         autoLockTimeout: timeout,
+        pinEnabled: pinEnabled,
+        biometricEnabled: biometricEnabled,
         savedPdfPasswordBanks: passwords.keys.toList()..sort(),
         biometricsAvailable: biometricsAvailable,
       ),
     );
   }
 
-  void setPinEnabled(bool enabled) {
+  Future<void> setPinEnabled(bool enabled) async {
+    await _repository.savePinEnabled(enabled);
     emit(state.copyWith(pinEnabled: enabled));
   }
 
-  void setBiometricEnabled(bool enabled) {
-    emit(state.copyWith(biometricEnabled: enabled));
+  Future<void> setBiometricEnabled(bool enabled) async {
+    if (!enabled) {
+      await _repository.saveBiometricEnabled(false);
+      emit(
+        state.copyWith(
+          biometricEnabled: false,
+          lastAuthenticationMessage: 'Biometric lock disabled.',
+        ),
+      );
+      return;
+    }
+
+    await authenticateBiometrics(enableOnSuccess: true);
   }
 
   Future<void> setAutoLockTimeout(AutoLockTimeout timeout) async {
@@ -124,7 +144,7 @@ class SecurityCubit extends Cubit<SecurityState> {
     emit(state.copyWith(savedPdfPasswordBanks: updated));
   }
 
-  Future<void> authenticateBiometrics() async {
+  Future<void> authenticateBiometrics({bool enableOnSuccess = false}) async {
     emit(
       state.copyWith(
         authenticationInProgress: true,
@@ -132,13 +152,22 @@ class SecurityCubit extends Cubit<SecurityState> {
       ),
     );
     try {
-      final authenticated = await _localAuthentication.authenticate(
-        localizedReason:
-            'Authenticate to unlock TapTracker with biometrics or system credentials',
-        options: const AuthenticationOptions(biometricOnly: false),
-      );
+      final authenticated = await (_authenticate?.call(_localAuthentication) ??
+          _localAuthentication.authenticate(
+            localizedReason:
+                'Authenticate to unlock TapTracker with biometrics or system credentials',
+            options: const AuthenticationOptions(
+              biometricOnly: false,
+              stickyAuth: true,
+              useErrorDialogs: true,
+            ),
+          ));
+      if (enableOnSuccess) {
+        await _repository.saveBiometricEnabled(authenticated);
+      }
       emit(
         state.copyWith(
+          biometricEnabled: enableOnSuccess ? authenticated : state.biometricEnabled,
           authenticationInProgress: false,
           lastAuthenticationMessage:
               authenticated ? 'Authentication successful.' : 'Authentication cancelled.',
@@ -147,8 +176,9 @@ class SecurityCubit extends Cubit<SecurityState> {
     } catch (_) {
       emit(
         state.copyWith(
+          biometricEnabled: enableOnSuccess ? false : state.biometricEnabled,
           authenticationInProgress: false,
-          lastAuthenticationMessage: 'Authentication failed on this device.',
+          lastAuthenticationMessage: 'Authentication failed. Please try again.',
         ),
       );
     }

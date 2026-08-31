@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -71,12 +73,18 @@ class SecurityTab extends StatelessWidget {
                 style: TextStyle(fontWeight: FontWeight.bold)),
             SwitchListTile(
               value: state.pinEnabled,
-              onChanged: context.read<SecurityCubit>().setPinEnabled,
+              onChanged: (value) {
+                unawaited(context.read<SecurityCubit>().setPinEnabled(value));
+              },
               title: const Text('Enable PIN lock'),
             ),
             SwitchListTile(
               value: state.biometricEnabled,
-              onChanged: context.read<SecurityCubit>().setBiometricEnabled,
+              onChanged: (value) {
+                unawaited(
+                  context.read<SecurityCubit>().setBiometricEnabled(value),
+                );
+              },
               title: const Text('Enable biometric lock'),
             ),
             DropdownButtonFormField<AutoLockTimeout>(
@@ -149,34 +157,16 @@ class SecurityTab extends StatelessWidget {
                 content: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Autocomplete<String>(
-                      optionsBuilder: (textEditingValue) {
-                        final query =
-                            textEditingValue.text.trim().toLowerCase();
-                        if (query.isEmpty) {
-                          return philippineBanks;
-                        }
-                        return philippineBanks.where(
-                          (bank) => bank.toLowerCase().contains(query),
-                        );
-                      },
-                      onSelected: (value) {
-                        bankController.text = value;
-                      },
-                      fieldViewBuilder: (context, textController, focusNode,
-                          onFieldSubmitted) {
-                        if (textController.text != bankController.text) {
-                          textController.value = bankController.value;
-                        }
-                        return TextField(
-                          controller: textController,
-                          focusNode: focusNode,
-                          onChanged: (value) => bankController.text = value,
-                          decoration: const InputDecoration(
-                            labelText: 'Bank (searchable)',
-                          ),
-                        );
-                      },
+                    DropdownMenu<String>(
+                      controller: bankController,
+                      requestFocusOnTap: true,
+                      enableFilter: true,
+                      enableSearch: true,
+                      label: const Text('Bank (searchable)'),
+                      dropdownMenuEntries: philippineBanks
+                          .map((bank) =>
+                              DropdownMenuEntry<String>(value: bank, label: bank))
+                          .toList(),
                     ),
                     TextField(
                       controller: passwordController,
@@ -208,7 +198,7 @@ class SecurityTab extends StatelessWidget {
                     onPressed: () {
                       final bank = bankController.text.trim();
                       final password = passwordController.text;
-                      if (bank.isEmpty || password.isEmpty) {
+                      if (!_isKnownBank(bank) || password.isEmpty) {
                         return;
                       }
                       context
@@ -367,125 +357,115 @@ class _IngestionTabState extends State<IngestionTab> {
     bool obscurePassword = true;
     bool rememberPassword = false;
 
-    final prompt = await showDialog<_ImportPrompt>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Unlock statement PDF'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Autocomplete<String>(
-                    optionsBuilder: (textEditingValue) {
-                      final query = textEditingValue.text.trim().toLowerCase();
-                      if (query.isEmpty) {
-                        return philippineBanks;
-                      }
-                      return philippineBanks.where(
-                        (bank) => bank.toLowerCase().contains(query),
-                      );
-                    },
-                    onSelected: (value) {
-                      bankController.text = value;
-                    },
-                    fieldViewBuilder:
-                        (context, textController, focusNode, onFieldSubmitted) {
-                      if (textController.text != bankController.text) {
-                        textController.value = bankController.value;
-                      }
-                      return TextField(
-                        controller: textController,
-                        focusNode: focusNode,
-                        onChanged: (value) => bankController.text = value,
-                        decoration: const InputDecoration(
-                          labelText: 'Bank (searchable)',
-                        ),
-                      );
-                    },
-                  ),
-                  TextField(
-                    controller: passwordController,
-                    obscureText: obscurePassword,
-                    decoration: InputDecoration(
-                      labelText: 'PDF password',
-                      suffixIcon: IconButton(
-                        onPressed: () {
-                          setDialogState(() {
-                            obscurePassword = !obscurePassword;
-                          });
-                        },
-                        icon: Icon(
-                          obscurePassword
-                              ? Icons.visibility
-                              : Icons.visibility_off,
+    try {
+      final prompt = await showDialog<_ImportPrompt>(
+        context: context,
+        builder: (dialogContext) {
+          return StatefulBuilder(
+            builder: (context, setDialogState) {
+              return AlertDialog(
+                title: const Text('Unlock statement PDF'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownMenu<String>(
+                      controller: bankController,
+                      requestFocusOnTap: true,
+                      enableFilter: true,
+                      enableSearch: true,
+                      label: const Text('Bank (searchable)'),
+                      dropdownMenuEntries: philippineBanks
+                          .map((bank) => DropdownMenuEntry<String>(
+                              value: bank, label: bank))
+                          .toList(),
+                    ),
+                    TextField(
+                      controller: passwordController,
+                      obscureText: obscurePassword,
+                      decoration: InputDecoration(
+                        labelText: 'PDF password',
+                        suffixIcon: IconButton(
+                          onPressed: () {
+                            setDialogState(() {
+                              obscurePassword = !obscurePassword;
+                            });
+                          },
+                          icon: Icon(
+                            obscurePassword
+                                ? Icons.visibility
+                                : Icons.visibility_off,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  CheckboxListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: rememberPassword,
-                    onChanged: (value) {
-                      setDialogState(() {
-                        rememberPassword = value ?? false;
-                      });
-                    },
-                    title: const Text('Remember password for this bank'),
-                  ),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () async {
-                        final bank = bankController.text.trim();
-                        if (bank.isEmpty) {
-                          return;
-                        }
-                        final securityCubit = context.read<SecurityCubit>();
-                        final saved = await securityCubit.getPdfPassword(bank);
-                        if (saved == null || !context.mounted) {
-                          return;
-                        }
+                    CheckboxListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: rememberPassword,
+                      onChanged: (value) {
                         setDialogState(() {
-                          passwordController.text = saved;
+                          rememberPassword = value ?? false;
                         });
                       },
-                      child: const Text('Use saved password'),
+                      title: const Text('Remember password for this bank'),
                     ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () async {
+                          final bank = bankController.text.trim();
+                          if (bank.isEmpty) {
+                            return;
+                          }
+                          final securityCubit = context.read<SecurityCubit>();
+                          final saved = await securityCubit.getPdfPassword(bank);
+                          if (!context.mounted || saved == null) {
+                            return;
+                          }
+                          setDialogState(() {
+                            passwordController.text = saved;
+                          });
+                        },
+                        child: const Text('Use saved password'),
+                      ),
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    child: const Text('Cancel'),
+                  ),
+                  FilledButton(
+                    onPressed: () {
+                      final bank = bankController.text.trim();
+                      final password = passwordController.text;
+                      if (!_isKnownBank(bank) || password.isEmpty) {
+                        return;
+                      }
+                      Navigator.pop(
+                        dialogContext,
+                        _ImportPrompt(
+                          bank: bank,
+                          password: password,
+                          rememberPassword: rememberPassword,
+                        ),
+                      );
+                    },
+                    child: const Text('Continue import'),
                   ),
                 ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    final bank = bankController.text.trim();
-                    final password = passwordController.text;
-                    if (bank.isEmpty || password.isEmpty) {
-                      return;
-                    }
-                    Navigator.pop(
-                      dialogContext,
-                      _ImportPrompt(
-                        bank: bank,
-                        password: password,
-                        rememberPassword: rememberPassword,
-                      ),
-                    );
-                  },
-                  child: const Text('Continue import'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-    return prompt;
+              );
+            },
+          );
+        },
+      );
+      return prompt;
+    } finally {
+      bankController.clear();
+      passwordController.clear();
+      bankController.dispose();
+      passwordController.dispose();
+    }
   }
 
   Future<void> _showEditSummaryDialog(
@@ -603,8 +583,10 @@ class CardsTab extends StatelessWidget {
             ...state.cards.map(
               (card) => Card(
                 child: ListTile(
-                  leading:
-                      CircleAvatar(backgroundColor: hexToColor(card.colorHex)),
+                  leading: CircleAvatar(
+                    backgroundColor: hexToColor(card.colorHex),
+                    child: Icon(networkIcon(card.network), color: Colors.white),
+                  ),
                   title: Text('${card.nickname} • ${card.bankName}'),
                   subtitle: Text(
                     '₱${card.creditLimit.toStringAsFixed(2)} • ${card.network.name} • statement ${card.statementDay} • due ${card.dueDay}',
@@ -655,50 +637,33 @@ class CardsTab extends StatelessWidget {
         TextEditingController(text: existing?.statementDay.toString() ?? '10');
     final dueDayController =
         TextEditingController(text: existing?.dueDay.toString() ?? '5');
-    final colorController =
-        TextEditingController(text: existing?.colorHex ?? '#1976D2');
+    var selectedColorHex = existing?.colorHex ?? cardColorOptions.first;
 
     var selectedNetwork = existing?.network ?? CardNetwork.visa;
 
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) {
+          return StatefulBuilder(
+            builder: (context, setDialogState) {
+              return AlertDialog(
               title: Text(
                   existing == null ? 'Add credit card' : 'Edit credit card'),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Autocomplete<String>(
-                      optionsBuilder: (textEditingValue) {
-                        final query =
-                            textEditingValue.text.trim().toLowerCase();
-                        if (query.isEmpty) {
-                          return philippineBanks;
-                        }
-                        return philippineBanks.where(
-                          (bank) => bank.toLowerCase().contains(query),
-                        );
-                      },
-                      onSelected: (value) {
-                        bankController.text = value;
-                      },
-                      fieldViewBuilder: (context, textController, focusNode,
-                          onFieldSubmitted) {
-                        if (textController.text != bankController.text) {
-                          textController.value = bankController.value;
-                        }
-                        return TextField(
-                          controller: textController,
-                          focusNode: focusNode,
-                          onChanged: (value) => bankController.text = value,
-                          decoration:
-                              const InputDecoration(labelText: 'Bank name'),
-                        );
-                      },
+                    DropdownMenu<String>(
+                      controller: bankController,
+                      requestFocusOnTap: true,
+                      enableFilter: true,
+                      enableSearch: true,
+                      label: const Text('Bank name'),
+                      dropdownMenuEntries: philippineBanks
+                          .map((bank) =>
+                              DropdownMenuEntry<String>(value: bank, label: bank))
+                          .toList(),
                     ),
                     TextField(
                       controller: nicknameController,
@@ -710,7 +675,13 @@ class CardsTab extends StatelessWidget {
                       items: CardNetwork.values
                           .map((network) => DropdownMenuItem(
                                 value: network,
-                                child: Text(network.name.toUpperCase()),
+                                child: Row(
+                                  children: [
+                                    Icon(networkIcon(network), size: 18),
+                                    const SizedBox(width: 8),
+                                    Text(network.name.toUpperCase()),
+                                  ],
+                                ),
                               ))
                           .toList(),
                       onChanged: (value) {
@@ -739,10 +710,29 @@ class CardsTab extends StatelessWidget {
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(labelText: 'Due day'),
                     ),
-                    TextField(
-                      controller: colorController,
-                      decoration: const InputDecoration(
-                          labelText: 'Color hex (#RRGGBB)'),
+                    const SizedBox(height: 8),
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Card color'),
+                    ),
+                    Wrap(
+                      spacing: 8,
+                      children: cardColorOptions
+                          .map(
+                            (hex) => ChoiceChip(
+                              selected: selectedColorHex == hex,
+                              onSelected: (_) {
+                                setDialogState(() {
+                                  selectedColorHex = hex;
+                                });
+                              },
+                              label: CircleAvatar(
+                                radius: 10,
+                                backgroundColor: hexToColor(hex),
+                              ),
+                            ),
+                          )
+                          .toList(),
                     ),
                   ],
                 ),
@@ -756,7 +746,7 @@ class CardsTab extends StatelessWidget {
                   onPressed: () {
                     final bank = bankController.text.trim();
                     final nickname = nicknameController.text.trim();
-                    if (bank.isEmpty || nickname.isEmpty) {
+                    if (!_isKnownBank(bank) || nickname.isEmpty) {
                       return;
                     }
                     final creditLimit =
@@ -764,9 +754,7 @@ class CardsTab extends StatelessWidget {
                     final statementDay =
                         int.tryParse(statementDayController.text) ?? 1;
                     final dueDay = int.tryParse(dueDayController.text) ?? 1;
-                    final colorHex = colorController.text.trim().isEmpty
-                        ? '#1976D2'
-                        : colorController.text.trim();
+                    final colorHex = selectedColorHex;
 
                     if (existing == null) {
                       context.read<CardCubit>().addCard(
@@ -796,11 +784,18 @@ class CardsTab extends StatelessWidget {
                   child: Text(existing == null ? 'Add' : 'Save changes'),
                 ),
               ],
-            );
-          },
-        );
-      },
-    );
+              );
+            },
+          );
+        },
+      );
+    } finally {
+      bankController.dispose();
+      nicknameController.dispose();
+      creditLimitController.dispose();
+      statementDayController.dispose();
+      dueDayController.dispose();
+    }
   }
 }
 
@@ -1014,4 +1009,35 @@ DateTime? _tryDate(String text) {
     return null;
   }
   return DateTime(year, month, day);
+}
+
+const List<String> cardColorOptions = [
+  '#1976D2',
+  '#2E7D32',
+  '#6A1B9A',
+  '#EF6C00',
+  '#C62828',
+  '#00838F',
+];
+
+IconData networkIcon(CardNetwork network) {
+  switch (network) {
+    case CardNetwork.visa:
+      return Icons.credit_card;
+    case CardNetwork.mastercard:
+      return Icons.payment;
+    case CardNetwork.jcb:
+      return Icons.account_balance_wallet;
+    case CardNetwork.amex:
+      return Icons.business_center;
+    case CardNetwork.unionpay:
+      return Icons.currency_exchange;
+    case CardNetwork.diners:
+      return Icons.restaurant;
+  }
+}
+
+bool _isKnownBank(String bank) {
+  final normalized = bank.trim().toLowerCase();
+  return philippineBanks.any((item) => item.toLowerCase() == normalized);
 }

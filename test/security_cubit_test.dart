@@ -12,15 +12,19 @@ void main() {
 
   group('SecurityCubit', () {
     blocTest<SecurityCubit, SecurityState>(
-      'updates PIN and biometric toggles',
+      'updates PIN toggle and disables biometric',
       build: () => SecurityCubit(SecureSettingsRepository()),
-      act: (cubit) {
-        cubit.setPinEnabled(true);
-        cubit.setBiometricEnabled(true);
+      act: (cubit) async {
+        await cubit.setPinEnabled(true);
+        await cubit.setBiometricEnabled(false);
       },
       expect: () => [
         const SecurityState(pinEnabled: true),
-        const SecurityState(pinEnabled: true, biometricEnabled: true),
+        const SecurityState(
+          pinEnabled: true,
+          biometricEnabled: false,
+          lastAuthenticationMessage: 'Biometric lock disabled.',
+        ),
       ],
     );
 
@@ -30,6 +34,22 @@ void main() {
       act: (cubit) => cubit.setAutoLockTimeout(AutoLockTimeout.fiveMinutes),
       expect: () => [
         const SecurityState(autoLockTimeout: AutoLockTimeout.fiveMinutes),
+      ],
+    );
+
+    blocTest<SecurityCubit, SecurityState>(
+      'enables biometric after successful authentication',
+      build: () => SecurityCubit(
+        SecureSettingsRepository(),
+        authenticate: (_) async => true,
+      ),
+      act: (cubit) => cubit.setBiometricEnabled(true),
+      expect: () => [
+        const SecurityState(authenticationInProgress: true),
+        const SecurityState(
+          biometricEnabled: true,
+          lastAuthenticationMessage: 'Authentication successful.',
+        ),
       ],
     );
   });

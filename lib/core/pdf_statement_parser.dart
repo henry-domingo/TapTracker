@@ -17,10 +17,15 @@ class ParsedStatementResult {
 }
 
 class PdfStatementParser {
-  const PdfStatementParser();
+  const PdfStatementParser({List<String> banks = philippineBanks}) : _banks = banks;
+
+  final List<String> _banks;
 
   ParsedStatementResult? parse(Uint8List bytes, {String? password}) {
     final text = _extractText(bytes, password: password);
+    if (text.trim().isEmpty) {
+      return null;
+    }
     final primary = _parsePrimary(text);
     if (primary != null) {
       return ParsedStatementResult(summary: primary, usedFallback: false);
@@ -30,7 +35,10 @@ class PdfStatementParser {
     if (fallback != null) {
       return ParsedStatementResult(summary: fallback, usedFallback: true);
     }
-    return null;
+    return ParsedStatementResult(
+      summary: _buildBestEffortSummary(text),
+      usedFallback: true,
+    );
   }
 
   String _extractText(Uint8List bytes, {String? password}) {
@@ -57,7 +65,7 @@ class PdfStatementParser {
 
   ParseSummary? _parsePrimary(String rawText) {
     final text = rawText.replaceAll(RegExp(r'\s+'), ' ');
-    final bankPattern = philippineBanks.map(RegExp.escape).join('|');
+    final bankPattern = _banks.map(RegExp.escape).join('|');
     final bank = _match(text, [
       RegExp('($bankPattern)', caseSensitive: false),
     ]);
@@ -231,5 +239,64 @@ class PdfStatementParser {
 
   int _estimateTransactionCount(String text) {
     return RegExp(r'\d{2}/\d{2}\s+[A-Za-z0-9]').allMatches(text).length;
+  }
+
+  ParseSummary _buildBestEffortSummary(String text) {
+    final parsedDates = RegExp(
+      r'(\d{2}/\d{2}/\d{4}|[A-Za-z]{3,9}\s+\d{1,2},\s*\d{4})',
+      caseSensitive: false,
+    )
+        .allMatches(text)
+        .map((m) => _parseDate(m.group(1)))
+        .whereType<DateTime>()
+        .toList();
+
+    final parsedAmounts = RegExp(r'(?:PHP|₱)\s*([\d,]+(?:\.\d{2})?)')
+        .allMatches(text)
+        .map((m) => _parseMoney(m.group(1)))
+        .whereType<double>()
+        .toList();
+
+    final statementDate = parsedDates.isNotEmpty ? parsedDates.first : DateTime.now();
+    final dueDate = parsedDates.length > 1
+        ? parsedDates[1]
+        : statementDate.add(const Duration(days: 20));
+
+    final explicitTotal = _parseMoney(
+      _match(text, [
+        RegExp(
+          r'(?:Total|Total\s*Amount)\s*(?:Amount\s*Due|Due)?\s*[:\-]?\s*(?:PHP|₱)?\s*([\d,]+(?:\.\d{2})?)',
+          caseSensitive: false,
+        ),
+      ]),
+    );
+    final total = explicitTotal ??
+        (parsedAmounts.isEmpty
+            ? 0.0
+            : parsedAmounts.reduce((a, b) => a > b ? a : b));
+    final explicitMinimum = _parseMoney(
+      _match(text, [
+        RegExp(
+          r'(?:Minimum|Min\.?)\s*(?:Amount\s*Due|Due)?\s*[:\-]?\s*(?:PHP|₱)?\s*([\d,]+(?:\.\d{2})?)',
+          caseSensitive: false,
+        ),
+      ]),
+    );
+    final minimum = explicitMinimum ??
+        (parsedAmounts.isEmpty
+            ? 0.0
+            : parsedAmounts.reduce((a, b) => a < b ? a : b));
+
+    final bankPattern = _banks.map(RegExp.escape).join('|');
+    final bank = _match(text, [RegExp('($bankPattern)', caseSensitive: false)]);
+
+    return ParseSummary(
+      bankDetected: bank ?? 'Unknown',
+      statementDate: statementDate,
+      dueDate: dueDate,
+      totalAmountDue: total,
+      minimumDue: minimum,
+      transactionCount: _estimateTransactionCount(text),
+    );
   }
 }

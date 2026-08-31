@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-enum CardNetwork { visa, mastercard, jcb, amex }
+enum CardNetwork { visa, mastercard, jcb, amex, unionpay, diners }
 
 enum AutoLockTimeout { immediate, oneMinute, fiveMinutes }
 
