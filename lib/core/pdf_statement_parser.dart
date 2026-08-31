@@ -48,7 +48,7 @@ class PdfStatementParser {
       }
       return output.toString();
     } catch (_) {
-      final latin = latin1.decode(bytes, allowMalformed: true);
+      final latin = latin1.decode(bytes, allowInvalid: true);
       return latin.replaceAll(RegExp(r'[^\x09\x0A\x0D\x20-\x7E]'), ' ');
     } finally {
       document?.dispose();
