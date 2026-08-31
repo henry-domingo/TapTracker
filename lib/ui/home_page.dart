@@ -153,70 +153,68 @@ class SecurityTab extends StatelessWidget {
           return StatefulBuilder(
             builder: (context, setDialogState) {
               return AlertDialog(
-                title: const Text('Save bank PDF password'),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    DropdownMenu<String>(
-                      controller: bankController,
-                      requestFocusOnTap: true,
-                      enableFilter: true,
-                      enableSearch: true,
-                      label: const Text('Bank (searchable)'),
-                      dropdownMenuEntries: philippineBanks
-                          .map((bank) =>
-                              DropdownMenuEntry<String>(value: bank, label: bank))
-                          .toList(),
-                    ),
-                    TextField(
-                      controller: passwordController,
-                      obscureText: obscurePassword,
-                      decoration: InputDecoration(
-                        labelText: 'Password',
-                        suffixIcon: IconButton(
-                          onPressed: () {
-                            setDialogState(() {
-                              obscurePassword = !obscurePassword;
-                            });
-                          },
-                          icon: Icon(
-                            obscurePassword
-                                ? Icons.visibility
-                                : Icons.visibility_off,
-                          ),
+              title: const Text('Save bank PDF password'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownMenu<String>(
+                    controller: bankController,
+                    requestFocusOnTap: true,
+                    enableFilter: true,
+                    enableSearch: true,
+                    label: const Text('Bank (searchable)'),
+                    dropdownMenuEntries: philippineBanks
+                        .map((bank) =>
+                            DropdownMenuEntry<String>(value: bank, label: bank))
+                        .toList(),
+                  ),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: obscurePassword,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      suffixIcon: IconButton(
+                        onPressed: () {
+                          setDialogState(() {
+                            obscurePassword = !obscurePassword;
+                          });
+                        },
+                        icon: Icon(
+                          obscurePassword
+                              ? Icons.visibility
+                              : Icons.visibility_off,
                         ),
                       ),
                     ),
-                  ],
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(dialogContext),
-                    child: const Text('Cancel'),
-                  ),
-                  FilledButton(
-                    onPressed: () {
-                      final bank = bankController.text.trim();
-                      final password = passwordController.text;
-                      if (!_isKnownBank(bank) || password.isEmpty) {
-                        return;
-                      }
-                      context
-                          .read<SecurityCubit>()
-                          .savePdfPassword(bank, password);
-                      Navigator.pop(dialogContext);
-                    },
-                    child: const Text('Save'),
                   ),
                 ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final bank = bankController.text.trim();
+                    final password = passwordController.text;
+                    if (!_isKnownBank(bank) || password.isEmpty) {
+                      return;
+                    }
+                    context
+                        .read<SecurityCubit>()
+                        .savePdfPassword(bank, password);
+                    Navigator.pop(dialogContext);
+                  },
+                  child: const Text('Save'),
+                ),
+              ],
               );
             },
           );
         },
       );
     } finally {
-      passwordController.clear();
-      bankController.clear();
       bankController.dispose();
       passwordController.dispose();
     }
@@ -461,8 +459,6 @@ class _IngestionTabState extends State<IngestionTab> {
       );
       return prompt;
     } finally {
-      bankController.clear();
-      passwordController.clear();
       bankController.dispose();
       passwordController.dispose();
     }
