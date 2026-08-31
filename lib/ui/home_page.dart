@@ -142,82 +142,10 @@ class SecurityTab extends StatelessWidget {
   }
 
   Future<void> _showAddPasswordDialog(BuildContext context) async {
-    final bankController = TextEditingController();
-    final passwordController = TextEditingController();
-    bool obscurePassword = true;
-
-    try {
-      await showDialog<void>(
-        context: context,
-        builder: (dialogContext) {
-          return StatefulBuilder(
-            builder: (context, setDialogState) {
-              return AlertDialog(
-              title: const Text('Save bank PDF password'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownMenu<String>(
-                    controller: bankController,
-                    requestFocusOnTap: true,
-                    enableFilter: true,
-                    enableSearch: true,
-                    label: const Text('Bank (searchable)'),
-                    dropdownMenuEntries: philippineBanks
-                        .map((bank) =>
-                            DropdownMenuEntry<String>(value: bank, label: bank))
-                        .toList(),
-                  ),
-                  TextField(
-                    controller: passwordController,
-                    obscureText: obscurePassword,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      suffixIcon: IconButton(
-                        onPressed: () {
-                          setDialogState(() {
-                            obscurePassword = !obscurePassword;
-                          });
-                        },
-                        icon: Icon(
-                          obscurePassword
-                              ? Icons.visibility
-                              : Icons.visibility_off,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    final bank = bankController.text.trim();
-                    final password = passwordController.text;
-                    if (!_isKnownBank(bank) || password.isEmpty) {
-                      return;
-                    }
-                    context
-                        .read<SecurityCubit>()
-                        .savePdfPassword(bank, password);
-                    Navigator.pop(dialogContext);
-                  },
-                  child: const Text('Save'),
-                ),
-              ],
-              );
-            },
-          );
-        },
-      );
-    } finally {
-      bankController.dispose();
-      passwordController.dispose();
-    }
+    await showDialog<void>(
+      context: context,
+      builder: (context) => const _AddPasswordDialog(),
+    );
   }
 }
 
@@ -350,213 +278,18 @@ class _IngestionTabState extends State<IngestionTab> {
   }
 
   Future<_ImportPrompt?> _showImportPrompt(BuildContext context) async {
-    final bankController = TextEditingController();
-    final passwordController = TextEditingController();
-    bool obscurePassword = true;
-    bool rememberPassword = false;
-
-    try {
-      final prompt = await showDialog<_ImportPrompt>(
-        context: context,
-        builder: (dialogContext) {
-          return StatefulBuilder(
-            builder: (context, setDialogState) {
-              return AlertDialog(
-                title: const Text('Unlock statement PDF'),
-                content: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    DropdownMenu<String>(
-                      controller: bankController,
-                      requestFocusOnTap: true,
-                      enableFilter: true,
-                      enableSearch: true,
-                      label: const Text('Bank (searchable)'),
-                      dropdownMenuEntries: philippineBanks
-                          .map((bank) => DropdownMenuEntry<String>(
-                              value: bank, label: bank))
-                          .toList(),
-                    ),
-                    TextField(
-                      controller: passwordController,
-                      obscureText: obscurePassword,
-                      decoration: InputDecoration(
-                        labelText: 'PDF password',
-                        suffixIcon: IconButton(
-                          onPressed: () {
-                            setDialogState(() {
-                              obscurePassword = !obscurePassword;
-                            });
-                          },
-                          icon: Icon(
-                            obscurePassword
-                                ? Icons.visibility
-                                : Icons.visibility_off,
-                          ),
-                        ),
-                      ),
-                    ),
-                    CheckboxListTile(
-                      contentPadding: EdgeInsets.zero,
-                      value: rememberPassword,
-                      onChanged: (value) {
-                        setDialogState(() {
-                          rememberPassword = value ?? false;
-                        });
-                      },
-                      title: const Text('Remember password for this bank'),
-                    ),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () async {
-                          final bank = bankController.text.trim();
-                          if (bank.isEmpty) {
-                            return;
-                          }
-                          final securityCubit = context.read<SecurityCubit>();
-                          final saved = await securityCubit.getPdfPassword(bank);
-                          if (!context.mounted || saved == null) {
-                            return;
-                          }
-                          setDialogState(() {
-                            passwordController.text = saved;
-                          });
-                        },
-                        child: const Text('Use saved password'),
-                      ),
-                    ),
-                  ],
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(dialogContext),
-                    child: const Text('Cancel'),
-                  ),
-                  FilledButton(
-                    onPressed: () {
-                      final bank = bankController.text.trim();
-                      final password = passwordController.text;
-                      if (!_isKnownBank(bank) || password.isEmpty) {
-                        return;
-                      }
-                      Navigator.pop(
-                        dialogContext,
-                        _ImportPrompt(
-                          bank: bank,
-                          password: password,
-                          rememberPassword: rememberPassword,
-                        ),
-                      );
-                    },
-                    child: const Text('Continue import'),
-                  ),
-                ],
-              );
-            },
-          );
-        },
-      );
-      return prompt;
-    } finally {
-      bankController.dispose();
-      passwordController.dispose();
-    }
+    return showDialog<_ImportPrompt>(
+      context: context,
+      builder: (context) => const _ImportPromptDialog(),
+    );
   }
 
   Future<void> _showEditSummaryDialog(
       BuildContext context, ParseSummary summary) async {
-    final bankController = TextEditingController(text: summary.bankDetected);
-    final statementDateController =
-        TextEditingController(text: _dateText(summary.statementDate));
-    final dueDateController =
-        TextEditingController(text: _dateText(summary.dueDate));
-    final totalController =
-        TextEditingController(text: summary.totalAmountDue.toStringAsFixed(2));
-    final minimumController =
-        TextEditingController(text: summary.minimumDue.toStringAsFixed(2));
-    final countController =
-        TextEditingController(text: '${summary.transactionCount}');
-
-    try {
-      await showDialog<void>(
-        context: context,
-        builder: (dialogContext) {
-          return AlertDialog(
-            title: const Text('Edit parsed metadata'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                      controller: bankController,
-                      decoration: const InputDecoration(labelText: 'Bank')),
-                  TextField(
-                    controller: statementDateController,
-                    decoration: const InputDecoration(
-                        labelText: 'Statement date (YYYY-MM-DD)'),
-                  ),
-                  TextField(
-                    controller: dueDateController,
-                    decoration: const InputDecoration(
-                        labelText: 'Due date (YYYY-MM-DD)'),
-                  ),
-                  TextField(
-                      controller: totalController,
-                      decoration:
-                          const InputDecoration(labelText: 'Total due')),
-                  TextField(
-                      controller: minimumController,
-                      decoration:
-                          const InputDecoration(labelText: 'Minimum due')),
-                  TextField(
-                      controller: countController,
-                      decoration: const InputDecoration(
-                          labelText: 'Transaction count')),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  context.read<StatementCubit>().setParseSummary(
-                        summary.copyWith(
-                          bankDetected: bankController.text.trim(),
-                          statementDate:
-                              _tryDate(statementDateController.text) ??
-                                  summary.statementDate,
-                          dueDate: _tryDate(dueDateController.text) ??
-                              summary.dueDate,
-                          totalAmountDue:
-                              double.tryParse(totalController.text) ??
-                                  summary.totalAmountDue,
-                          minimumDue: double.tryParse(minimumController.text) ??
-                              summary.minimumDue,
-                          transactionCount:
-                              int.tryParse(countController.text) ??
-                                  summary.transactionCount,
-                        ),
-                      );
-                  Navigator.pop(dialogContext);
-                },
-                child: const Text('Apply'),
-              ),
-            ],
-          );
-        },
-      );
-    } finally {
-      bankController.dispose();
-      statementDateController.dispose();
-      dueDateController.dispose();
-      totalController.dispose();
-      minimumController.dispose();
-      countController.dispose();
-    }
+    await showDialog<void>(
+      context: context,
+      builder: (context) => _EditSummaryDialog(summary: summary),
+    );
   }
 }
 
@@ -623,175 +356,10 @@ class CardsTab extends StatelessWidget {
     BuildContext context, {
     CardProfile? existing,
   }) async {
-    final bankController =
-        TextEditingController(text: existing?.bankName ?? '');
-    final nicknameController =
-        TextEditingController(text: existing?.nickname ?? '');
-    final creditLimitController = TextEditingController(
-        text: existing?.creditLimit.toStringAsFixed(2) ?? '50000.00');
-    final statementDayController =
-        TextEditingController(text: existing?.statementDay.toString() ?? '10');
-    final dueDayController =
-        TextEditingController(text: existing?.dueDay.toString() ?? '5');
-    var selectedColorHex = existing?.colorHex ?? cardColorOptions.first;
-
-    var selectedNetwork = existing?.network ?? CardNetwork.visa;
-
-    try {
-      await showDialog<void>(
-        context: context,
-        builder: (dialogContext) {
-          return StatefulBuilder(
-            builder: (context, setDialogState) {
-              return AlertDialog(
-              title: Text(
-                  existing == null ? 'Add credit card' : 'Edit credit card'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    DropdownMenu<String>(
-                      controller: bankController,
-                      requestFocusOnTap: true,
-                      enableFilter: true,
-                      enableSearch: true,
-                      label: const Text('Bank name'),
-                      dropdownMenuEntries: philippineBanks
-                          .map((bank) =>
-                              DropdownMenuEntry<String>(value: bank, label: bank))
-                          .toList(),
-                    ),
-                    TextField(
-                      controller: nicknameController,
-                      decoration:
-                          const InputDecoration(labelText: 'Card nickname'),
-                    ),
-                    DropdownButtonFormField<CardNetwork>(
-                      value: selectedNetwork,
-                      items: CardNetwork.values
-                          .map((network) => DropdownMenuItem(
-                                value: network,
-                                child: Row(
-                                  children: [
-                                    Icon(networkIcon(network), size: 18),
-                                    const SizedBox(width: 8),
-                                    Text(network.name.toUpperCase()),
-                                  ],
-                                ),
-                              ))
-                          .toList(),
-                      onChanged: (value) {
-                        if (value != null) {
-                          setDialogState(() {
-                            selectedNetwork = value;
-                          });
-                        }
-                      },
-                      decoration: const InputDecoration(labelText: 'Network'),
-                    ),
-                    TextField(
-                      controller: creditLimitController,
-                      keyboardType: TextInputType.number,
-                      decoration:
-                          const InputDecoration(labelText: 'Credit limit'),
-                    ),
-                    TextField(
-                      controller: statementDayController,
-                      keyboardType: TextInputType.number,
-                      decoration:
-                          const InputDecoration(labelText: 'Statement day'),
-                    ),
-                    TextField(
-                      controller: dueDayController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Due day'),
-                    ),
-                    const SizedBox(height: 8),
-                    const Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text('Card color'),
-                    ),
-                    Wrap(
-                      spacing: 8,
-                      children: cardColorOptions
-                          .map(
-                            (hex) => ChoiceChip(
-                              selected: selectedColorHex == hex,
-                              onSelected: (_) {
-                                setDialogState(() {
-                                  selectedColorHex = hex;
-                                });
-                              },
-                              label: CircleAvatar(
-                                radius: 10,
-                                backgroundColor: hexToColor(hex),
-                              ),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text('Cancel'),
-                ),
-                FilledButton(
-                  onPressed: () {
-                    final bank = bankController.text.trim();
-                    final nickname = nicknameController.text.trim();
-                    if (!_isKnownBank(bank) || nickname.isEmpty) {
-                      return;
-                    }
-                    final creditLimit =
-                        double.tryParse(creditLimitController.text) ?? 0;
-                    final statementDay =
-                        int.tryParse(statementDayController.text) ?? 1;
-                    final dueDay = int.tryParse(dueDayController.text) ?? 1;
-                    final colorHex = selectedColorHex;
-
-                    if (existing == null) {
-                      context.read<CardCubit>().addCard(
-                            bankName: bank,
-                            nickname: nickname,
-                            network: selectedNetwork,
-                            creditLimit: creditLimit,
-                            statementDay: statementDay,
-                            dueDay: dueDay,
-                            colorHex: colorHex,
-                          );
-                    } else {
-                      context.read<CardCubit>().updateCard(
-                            existing.copyWith(
-                              bankName: bank,
-                              nickname: nickname,
-                              network: selectedNetwork,
-                              creditLimit: creditLimit,
-                              statementDay: statementDay,
-                              dueDay: dueDay,
-                              colorHex: colorHex,
-                            ),
-                          );
-                    }
-                    Navigator.pop(dialogContext);
-                  },
-                  child: Text(existing == null ? 'Add' : 'Save changes'),
-                ),
-              ],
-              );
-            },
-          );
-        },
-      );
-    } finally {
-      bankController.dispose();
-      nicknameController.dispose();
-      creditLimitController.dispose();
-      statementDayController.dispose();
-      dueDayController.dispose();
-    }
+    await showDialog<void>(
+      context: context,
+      builder: (context) => _CardDialog(existing: existing),
+    );
   }
 }
 
@@ -1036,4 +604,502 @@ IconData networkIcon(CardNetwork network) {
 bool _isKnownBank(String bank) {
   final normalized = bank.trim().toLowerCase();
   return philippineBanks.any((item) => item.toLowerCase() == normalized);
+}
+
+class _AddPasswordDialog extends StatefulWidget {
+  const _AddPasswordDialog({super.key});
+
+  @override
+  State<_AddPasswordDialog> createState() => _AddPasswordDialogState();
+}
+
+class _AddPasswordDialogState extends State<_AddPasswordDialog> {
+  late final TextEditingController _bankController;
+  late final TextEditingController _passwordController;
+  bool _obscurePassword = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _bankController = TextEditingController();
+    _passwordController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _bankController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Save bank PDF password'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          DropdownMenu<String>(
+            controller: _bankController,
+            requestFocusOnTap: true,
+            enableFilter: true,
+            enableSearch: true,
+            label: const Text('Bank (searchable)'),
+            dropdownMenuEntries: philippineBanks
+                .map((bank) =>
+                    DropdownMenuEntry<String>(value: bank, label: bank))
+                .toList(),
+          ),
+          TextField(
+            controller: _passwordController,
+            obscureText: _obscurePassword,
+            decoration: InputDecoration(
+              labelText: 'Password',
+              suffixIcon: IconButton(
+                onPressed: () {
+                  setState(() {
+                    _obscurePassword = !_obscurePassword;
+                  });
+                },
+                icon: Icon(
+                  _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final bank = _bankController.text.trim();
+            final password = _passwordController.text;
+            if (!_isKnownBank(bank) || password.isEmpty) {
+              return;
+            }
+            context.read<SecurityCubit>().savePdfPassword(bank, password);
+            Navigator.pop(context);
+          },
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ImportPromptDialog extends StatefulWidget {
+  const _ImportPromptDialog({super.key});
+
+  @override
+  State<_ImportPromptDialog> createState() => _ImportPromptDialogState();
+}
+
+class _ImportPromptDialogState extends State<_ImportPromptDialog> {
+  late final TextEditingController _bankController;
+  late final TextEditingController _passwordController;
+  bool _obscurePassword = true;
+  bool _rememberPassword = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _bankController = TextEditingController();
+    _passwordController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _bankController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Unlock statement PDF'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          DropdownMenu<String>(
+            controller: _bankController,
+            requestFocusOnTap: true,
+            enableFilter: true,
+            enableSearch: true,
+            label: const Text('Bank (searchable)'),
+            dropdownMenuEntries: philippineBanks
+                .map((bank) =>
+                    DropdownMenuEntry<String>(value: bank, label: bank))
+                .toList(),
+          ),
+          TextField(
+            controller: _passwordController,
+            obscureText: _obscurePassword,
+            decoration: InputDecoration(
+              labelText: 'PDF password',
+              suffixIcon: IconButton(
+                onPressed: () {
+                  setState(() {
+                    _obscurePassword = !_obscurePassword;
+                  });
+                },
+                icon: Icon(
+                  _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                ),
+              ),
+            ),
+          ),
+          CheckboxListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _rememberPassword,
+            onChanged: (value) {
+              setState(() {
+                _rememberPassword = value ?? false;
+              });
+            },
+            title: const Text('Remember password for this bank'),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () async {
+                final bank = _bankController.text.trim();
+                if (bank.isEmpty) {
+                  return;
+                }
+                final securityCubit = context.read<SecurityCubit>();
+                final saved = await securityCubit.getPdfPassword(bank);
+                if (!context.mounted || saved == null) {
+                  return;
+                }
+                setState(() {
+                  _passwordController.text = saved;
+                });
+              },
+              child: const Text('Use saved password'),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final bank = _bankController.text.trim();
+            final password = _passwordController.text;
+            if (!_isKnownBank(bank) || password.isEmpty) {
+              return;
+            }
+            Navigator.pop(
+              context,
+              _ImportPrompt(
+                bank: bank,
+                password: password,
+                rememberPassword: _rememberPassword,
+              ),
+            );
+          },
+          child: const Text('Continue import'),
+        ),
+      ],
+    );
+  }
+}
+
+class _EditSummaryDialog extends StatefulWidget {
+  final ParseSummary summary;
+  const _EditSummaryDialog({super.key, required this.summary});
+
+  @override
+  State<_EditSummaryDialog> createState() => _EditSummaryDialogState();
+}
+
+class _EditSummaryDialogState extends State<_EditSummaryDialog> {
+  late final TextEditingController _bankController;
+  late final TextEditingController _statementDateController;
+  late final TextEditingController _dueDateController;
+  late final TextEditingController _totalController;
+  late final TextEditingController _minimumController;
+  late final TextEditingController _countController;
+
+  @override
+  void initState() {
+    super.initState();
+    _bankController = TextEditingController(text: widget.summary.bankDetected);
+    _statementDateController =
+        TextEditingController(text: _dateText(widget.summary.statementDate));
+    _dueDateController =
+        TextEditingController(text: _dateText(widget.summary.dueDate));
+    _totalController =
+        TextEditingController(text: widget.summary.totalAmountDue.toStringAsFixed(2));
+    _minimumController =
+        TextEditingController(text: widget.summary.minimumDue.toStringAsFixed(2));
+    _countController =
+        TextEditingController(text: '${widget.summary.transactionCount}');
+  }
+
+  @override
+  void dispose() {
+    _bankController.dispose();
+    _statementDateController.dispose();
+    _dueDateController.dispose();
+    _totalController.dispose();
+    _minimumController.dispose();
+    _countController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Edit parsed metadata'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+                controller: _bankController,
+                decoration: const InputDecoration(labelText: 'Bank')),
+            TextField(
+              controller: _statementDateController,
+              decoration: const InputDecoration(
+                  labelText: 'Statement date (YYYY-MM-DD)'),
+            ),
+            TextField(
+              controller: _dueDateController,
+              decoration: const InputDecoration(
+                  labelText: 'Due date (YYYY-MM-DD)'),
+            ),
+            TextField(
+                controller: _totalController,
+                decoration: const InputDecoration(labelText: 'Total due')),
+            TextField(
+                controller: _minimumController,
+                decoration: const InputDecoration(labelText: 'Minimum due')),
+            TextField(
+                controller: _countController,
+                decoration: const InputDecoration(labelText: 'Transaction count')),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            context.read<StatementCubit>().setParseSummary(
+                  widget.summary.copyWith(
+                    bankDetected: _bankController.text.trim(),
+                    statementDate: _tryDate(_statementDateController.text) ??
+                        widget.summary.statementDate,
+                    dueDate: _tryDate(_dueDateController.text) ??
+                        widget.summary.dueDate,
+                    totalAmountDue: double.tryParse(_totalController.text) ??
+                        widget.summary.totalAmountDue,
+                    minimumDue: double.tryParse(_minimumController.text) ??
+                        widget.summary.minimumDue,
+                    transactionCount: int.tryParse(_countController.text) ??
+                        widget.summary.transactionCount,
+                  ),
+                );
+            Navigator.pop(context);
+          },
+          child: const Text('Apply'),
+        ),
+      ],
+    );
+  }
+}
+
+class _CardDialog extends StatefulWidget {
+  final CardProfile? existing;
+  const _CardDialog({super.key, this.existing});
+
+  @override
+  State<_CardDialog> createState() => _CardDialogState();
+}
+
+class _CardDialogState extends State<_CardDialog> {
+  late final TextEditingController _bankController;
+  late final TextEditingController _nicknameController;
+  late final TextEditingController _creditLimitController;
+  late final TextEditingController _statementDayController;
+  late final TextEditingController _dueDayController;
+  late String _selectedColorHex;
+  late CardNetwork _selectedNetwork;
+
+  @override
+  void initState() {
+    super.initState();
+    _bankController =
+        TextEditingController(text: widget.existing?.bankName ?? '');
+    _nicknameController =
+        TextEditingController(text: widget.existing?.nickname ?? '');
+    _creditLimitController = TextEditingController(
+        text: widget.existing?.creditLimit.toStringAsFixed(2) ?? '50000.00');
+    _statementDayController = TextEditingController(
+        text: widget.existing?.statementDay.toString() ?? '10');
+    _dueDayController =
+        TextEditingController(text: widget.existing?.dueDay.toString() ?? '5');
+    _selectedColorHex = widget.existing?.colorHex ?? cardColorOptions.first;
+    _selectedNetwork = widget.existing?.network ?? CardNetwork.visa;
+  }
+
+  @override
+  void dispose() {
+    _bankController.dispose();
+    _nicknameController.dispose();
+    _creditLimitController.dispose();
+    _statementDayController.dispose();
+    _dueDayController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title:
+          Text(widget.existing == null ? 'Add credit card' : 'Edit credit card'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownMenu<String>(
+              controller: _bankController,
+              requestFocusOnTap: true,
+              enableFilter: true,
+              enableSearch: true,
+              label: const Text('Bank name'),
+              dropdownMenuEntries: philippineBanks
+                  .map((bank) =>
+                      DropdownMenuEntry<String>(value: bank, label: bank))
+                  .toList(),
+            ),
+            TextField(
+              controller: _nicknameController,
+              decoration: const InputDecoration(labelText: 'Card nickname'),
+            ),
+            DropdownButtonFormField<CardNetwork>(
+              value: _selectedNetwork,
+              items: CardNetwork.values
+                  .map((network) => DropdownMenuItem(
+                        value: network,
+                        child: Row(
+                          children: [
+                            Icon(networkIcon(network), size: 18),
+                            const SizedBox(width: 8),
+                            Text(network.name.toUpperCase()),
+                          ],
+                        ),
+                      ))
+                  .toList(),
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() {
+                    _selectedNetwork = value;
+                  });
+                }
+              },
+              decoration: const InputDecoration(labelText: 'Network'),
+            ),
+            TextField(
+              controller: _creditLimitController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Credit limit'),
+            ),
+            TextField(
+              controller: _statementDayController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Statement day'),
+            ),
+            TextField(
+              controller: _dueDayController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Due day'),
+            ),
+            const SizedBox(height: 8),
+            const Align(
+              alignment: Alignment.centerLeft,
+              child: Text('Card color'),
+            ),
+            Wrap(
+              spacing: 8,
+              children: cardColorOptions
+                  .map(
+                    (hex) => ChoiceChip(
+                      selected: _selectedColorHex == hex,
+                      onSelected: (_) {
+                        setState(() {
+                          _selectedColorHex = hex;
+                        });
+                      },
+                      label: CircleAvatar(
+                        radius: 10,
+                        backgroundColor: hexToColor(hex),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final bank = _bankController.text.trim();
+            final nickname = _nicknameController.text.trim();
+            if (!_isKnownBank(bank) || nickname.isEmpty) {
+              return;
+            }
+            final creditLimit =
+                double.tryParse(_creditLimitController.text) ?? 0;
+            final statementDay =
+                int.tryParse(_statementDayController.text) ?? 1;
+            final dueDay = int.tryParse(_dueDayController.text) ?? 1;
+            final colorHex = _selectedColorHex;
+
+            if (widget.existing == null) {
+              context.read<CardCubit>().addCard(
+                    bankName: bank,
+                    nickname: nickname,
+                    network: _selectedNetwork,
+                    creditLimit: creditLimit,
+                    statementDay: statementDay,
+                    dueDay: dueDay,
+                    colorHex: colorHex,
+                  );
+            } else {
+              context.read<CardCubit>().updateCard(
+                    widget.existing!.copyWith(
+                      bankName: bank,
+                      nickname: nickname,
+                      network: _selectedNetwork,
+                      creditLimit: creditLimit,
+                      statementDay: statementDay,
+                      dueDay: dueDay,
+                      colorHex: colorHex,
+                    ),
+                  );
+            }
+            Navigator.pop(context);
+          },
+          child: Text(widget.existing == null ? 'Add' : 'Save changes'),
+        ),
+      ],
+    );
+  }
 }
